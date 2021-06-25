@@ -1,0 +1,3 @@
+(executable
+ (name oops)
+ (libraries base core stdio))
