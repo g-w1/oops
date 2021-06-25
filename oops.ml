@@ -31,6 +31,10 @@ type token =
   | Iden of string
   (* IntLit token*)
   | IntLit of string
+  (* CharLit token *)
+  | CharLit of char
+  (* "srtlit" token *)
+  | StrLit of string
   (* EndOfLine token (.)*)
   | EndOfLine
   (* EndOfFile*)
@@ -88,6 +92,8 @@ let string_of_token t = match t with
   | Kextern -> "extern"
   | Iden s -> s
   | IntLit s -> s
+  | StrLit s -> "\"\"" ^ s ^ "\"\""
+  | CharLit c -> "\'" ^ String.make 1 c ^ "\'"
   | EndOfLine -> "."
   | Eof -> "EOF"
   | Lparen -> "("
@@ -120,24 +126,25 @@ type lexerstate = Start
                 | SawBang
                 | InComment
                 | InCharLit
+                | InCharLitAteChar of char
                 | InCharLitForwardSlash
                 | InStrLit
                 | InStrLitForwardSlash
 
 let get_kword s = match s with
-  | "Set" | "set" -> Some Kset
-  | "external" | "External" -> Some Kextern
-  | "Change" | "change" -> Some Kchange
-  | "to" -> Some Kto
-  | "If" | "if" -> Some Kif
-  | "Loop" | "loop" -> Some Kloop
-  | "Break" | "break" -> Some Kbreak
-  | "and" | "And" -> Some BoAnd
-  | "or" | "Or" -> Some BoOr
-  | "function" | "Function" -> Some Kfunc
-  | "return" | "Return" -> Some Kreturn
-  | "export" | "Export" -> Some Kexport
-  | _ -> None
+  | "Set" | "set" -> Kset
+  | "external" | "External" -> Kextern
+  | "Change" | "change" -> Kchange
+  | "to" -> Kto
+  | "If" | "if" -> Kif
+  | "Loop" | "loop" -> Kloop
+  | "Break" | "break" -> Kbreak
+  | "and" | "And" -> BoAnd
+  | "or" | "Or" -> BoOr
+  | "function" | "Function" -> Kfunc
+  | "return" | "Return" -> Kreturn
+  | "export" | "Export" -> Kexport
+  | s -> Iden s
 
 type lexer = {str: string; state: lexerstate; pos: int; toks: token list}
 
@@ -165,6 +172,7 @@ let state_of_char c = match c with
   | _ -> None
 
 type lexer_error = UnexpectedChar of (char * int)
+                 | ExpectedChar of (char * int)
 
 let rec lex lexer =
   if lexer.pos >= String.length lexer.str then
@@ -173,12 +181,21 @@ let rec lex lexer =
     let c = String.get lexer.str lexer.pos in
     let finish_token lexer tok = lex { lexer with state=Start; pos=lexer.pos + 1; toks=lexer.toks@[tok] } in
     let change_state  lexer state = lex { lexer with state=state; pos=lexer.pos + 1 } in
+    let finish_and_put_back lexer tok = lex { lexer with state=Start; pos=lexer.pos; toks=lexer.toks@[tok] } in
     let incr lexer = lex { lexer with pos=lexer.pos + 1 } in
+    (* TODO handle out of bounds here *)
+    let eat_char lexer c t =
+      let ch = (String.get lexer.str lexer.pos) in
+      if c = Char.to_int ch then
+        finish_and_put_back lexer t
+      else
+        Error (ExpectedChar (Char.of_int_exn c, lexer.pos)) in
     match lexer.state with
     | Start ->
       (match c with
        | 'a'..'z' | 'A' .. 'Z' | '_' -> change_state lexer (InWord "")
        | '0'..'9' -> change_state lexer (InNum "")
+       | '\'' -> change_state lexer InCharLit
        | '\n' | ' ' -> incr lexer
        | c -> (match single_tok_tok c with
            | Some t -> finish_token lexer t
@@ -188,6 +205,16 @@ let rec lex lexer =
     | InComment -> (match c with
         | '}' -> change_state lexer Start
         | _ -> incr lexer)
+    | InWord s -> (match c with
+        | 'a'..'z'|'A'..'Z'|'0'..'9'|'_' -> change_state lexer (InWord (s ^ String.make 1 c))
+        | _ -> finish_and_put_back lexer (get_kword (s ^ String.make 1 c)))
+    | InNum s -> (match c with
+        | '0'..'9'|'_' -> change_state lexer (InWord (s ^ String.make 1 c))
+        | _ -> finish_and_put_back lexer (get_kword (s ^ String.make 1 c)))
+    | InCharLit -> (match c with
+        | '\\' -> change_state lexer InCharLitForwardSlash
+        | c -> change_state lexer (InCharLitAteChar c))
+    | InCharLitAteChar c -> eat_char lexer (Char.to_int '\'') (CharLit c)
     | _ -> Error (UnexpectedChar (c, lexer.pos))
 
 let test_ez_file = In_channel.read_all "test.ez"
@@ -196,4 +223,5 @@ let mylexer = {str=test_ez_file; state=Start; pos=0; toks=[]}
 
 let () = match lex mylexer with
   | Error UnexpectedChar (c, i) -> Out_channel.printf "unexpected char '%c' at %d\n" c i
+  | Error ExpectedChar (c, i) -> Out_channel.printf "expected char '%c' at %d\n" c i
   | Ok l -> let _ = (List.map ~f:(fun f -> Out_channel.print_string (string_of_token f); Out_channel.print_string " ") l) in Out_channel.print_endline ""
