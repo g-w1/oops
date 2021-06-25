@@ -196,4 +196,4 @@ let mylexer = {str=test_ez_file; state=Start; pos=0; toks=[]}
 
 let () = match lex mylexer with
   | Error UnexpectedChar (c, i) -> Out_channel.printf "unexpected char '%c' at %d\n" c i
-  | Ok l -> let _ = (List.map ~f:(fun f -> Out_channel.print_string (string_of_token f)) l) in Out_channel.print_endline ""
+  | Ok l -> let _ = (List.map ~f:(fun f -> Out_channel.print_string (string_of_token f); Out_channel.print_string " ") l) in Out_channel.print_endline ""
