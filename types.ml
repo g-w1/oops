@@ -1,78 +1,46 @@
 type token =
   (* Keyword Tokens*)
-  (* kword for set*)
-  | Kset
-  (* kword for Change*)
-  | Kchange
-  (* export*)
-  | Kexport
-  (* to*)
-  | Kto
-  (* If*)
-  | Kif
-  (* Loop*)
-  | Kloop
-  (* break*)
-  | Kbreak
-  (* Function*)
-  | Kfunc
-  (* Return*)
-  | Kreturn
-  (* External*)
-  | Kextern
+  | Kset (** kword for set*)
+  | Kchange (** kword for Change*)
+  | Kexport (** export*)
+  | Kto (** to*)
+  | Kif (** If*)
+  | Kloop (** Loop*)
+  | Kbreak (** break*)
+  | Kfunc (** Function*)
+  | Kreturn (** Return*)
+  | Kextern (** External*)
   (* Iden tokens*)
-  (* Identifier token*)
-  | Iden of string
-  (* IntLit token*)
-  | IntLit of string
-  (* CharLit token *)
-  | CharLit of char
-  (* "srtlit" token *)
-  | StrLit of string
-  (* EndOfLine token (.)*)
-  | EndOfLine
-  (* EndOfFile*)
-  | Eof
+  | Iden of string (** Identifier token*)
+  | IntLit of string (** IntLit token*)
+  | CharLit of char (** CharLit token *)
+  | StrLit of string (** "srtlit" token *)
+  | EndOfLine (** EndOfLine token (.)*)
+  | Eof (** EndOfFile*)
   (* grouping*)
-  (* Left paren*)
-  | Lparen
-  (* Right paren*)
-  | Rparen
-  (* | Open block ('')*)
-  | Comma
-  (* Close block ('!')*)
-  | ExclaimMark
+  | Lparen (** Left paren*)
+  | Rparen (** Right paren*)
+  | Comma (* Open block ('')*)
+  | ExclaimMark (** Close block ('!')*)
   (* Binops*)
-  (* '+'*)
-  | BoPlus
-  (* '-'*)
-  | BoMinus
-  (* '*'*)
-  | BoMul
-  (* '>'*)
-  | BoG
-  (* '<'*)
-  | BoL
-  (* '>='*)
-  | BoGe
-  (* '<='*)
-  | BoLe
-  (* '=='*)
-  | BoE
-  (* '!='*)
-  | BoNe
-  (* and*)
-  | BoAnd
-  (* or*)
-  | BoOr
-  (* [*)
-  | OpenBrak
-  (* ]*)
-  | CloseBrak
+  | BoPlus (** '+'*)
+  | BoMinus (** '-'*)
+  | BoMul (** '*'*)
+  | BoG (** '>'*)
+  | BoL (** '<'*)
+  | BoGe (** '>='*)
+  | BoLe (** '<='*)
+  | BoE (** '=='*)
+  | BoNe (** '!='*)
+  | BoAnd (** and*)
+  | BoOr (** or*)
+  | OpenBrak (** [*)
+  | CloseBrak (** ]*)
   (* Special people*)
-  (* @*)
-  | AtSign
+  | AtSign (** @*)
 
-type lexer_error = UnexpectedChar of {found: char; pos: int}
-                 | ExpectedChar of { found: char; expected: char; pos: int }
-                 | ExpectedCharFoundEof of {expected: char; pos: int; }
+type lexer_error =
+  | UnexpectedChar of {found: char; pos: int}
+  | ExpectedChar of { found: char; expected: char; pos: int }
+  | ExpectedCharFoundEof of {expected: char; pos: int; }
+  | ExpectedAlphaNumFoundEof of {pos: int;}

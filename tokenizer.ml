@@ -37,8 +37,6 @@ let string_of_token t = let open Types in match t with
   | CloseBrak -> "]"
   | AtSign -> "@"
 
-(* TODO make inword/innum capture their own
- * intermediate_str instead of storing in lexer *)
 type lexerstate = Start
                 | InWord of string
                 | InNum of string
@@ -114,8 +112,7 @@ let rec _lex lexer =
     | InNum s -> finish_token lexer (IntLit s)
     | SawGreaterThan -> finish_token lexer BoG
     | SawLessThan -> finish_token lexer BoL
-    (* TODO make ExpectedAlpha found EOF *)
-    | InCharLit -> Error (ExpectedCharFoundEof {expected='a'; pos=lexer.pos})
+    | InCharLit -> Error (ExpectedAlphaNumFoundEof {pos=lexer.pos})
     | InCharLitAteChar _ -> Error (ExpectedCharFoundEof {expected='\''; pos=lexer.pos})
     | InStrLit _ | InStrLitForwardSlash _ -> Error (ExpectedCharFoundEof {expected='"'; pos=lexer.pos})
     | _ -> Ok (lexer.toks@[Eof])
