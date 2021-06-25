@@ -1,7 +1,5 @@
 type token =
   (* Keyword Tokens*)
-  | Kset (** kword for set*)
-  | Kchange (** kword for Change*)
   | Kexport (** export*)
   | Kto (** to*)
   | Kif (** If*)
@@ -23,6 +21,8 @@ type token =
   | Comma (* Open block ('')*)
   | ExclaimMark (** Close block ('!')*)
   (* Binops*)
+  | BoSet (** := *)
+  | BoAss (** <- *)
   | BoPlus (** '+'*)
   | BoMinus (** '-'*)
   | BoMul (** '*'*)
@@ -38,9 +38,15 @@ type token =
   | CloseBrak (** ]*)
   (* Special people*)
   | AtSign (** @*)
+  | Colon (** :*)
 
 type lexer_error =
   | UnexpectedChar of {found: char; pos: int}
   | ExpectedChar of { found: char; expected: char; pos: int }
   | ExpectedCharFoundEof of {expected: char; pos: int; }
   | ExpectedAlphaNumFoundEof of {pos: int;}
+
+type tokens_and_locs =
+  { tokens: token list;
+    locations: int list;
+  }

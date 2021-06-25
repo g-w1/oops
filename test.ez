@@ -1,2 +1,4 @@
-* + - [1 2 3] 'a' = != "this is a bruh moment" {here is a comment} " multiline strin with \t tabs \t here" 123 6969 123
-'
+function f(a: u32, b: usize, c: []const),
+         x := 1.
+         x <- 2.
+!

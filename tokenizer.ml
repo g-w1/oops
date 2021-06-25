@@ -1,21 +1,21 @@
 open Base
 
 
-let string_of_token t = let open Types in match t with
-  | Kset -> "set"
-  | Kchange -> "change"
+let string_of_token t = let open Token_types in match t with
   | Kexport -> "export"
   | Kto -> "to"
   | Kif -> "if"
   | Kloop -> "loop"
   | Kbreak -> "break"
-  | Kfunc -> "func"
+  | Kfunc -> "function"
   | Kreturn -> "return"
   | Kextern -> "extern"
   | Iden s -> s
   | IntLit s -> s
   | StrLit s -> "\"" ^ s ^ "\""
   | CharLit c -> "\'" ^ Char.to_string c ^ "\'"
+  | BoAss -> "<-"
+  | BoSet -> ":="
   | EndOfLine -> "."
   | Eof -> "EOF"
   | Lparen -> "("
@@ -36,6 +36,7 @@ let string_of_token t = let open Types in match t with
   | OpenBrak -> "["
   | CloseBrak -> "]"
   | AtSign -> "@"
+  | Colon -> ":"
 
 type lexerstate = Start
                 | InWord of string
@@ -44,16 +45,15 @@ type lexerstate = Start
                 | SawGreaterThan
                 | SawBang
                 | InComment
+                | SawColon
                 | InCharLit
                 | InCharLitAteChar of char
                 | InCharLitForwardSlash
                 | InStrLit of string
                 | InStrLitForwardSlash of string
 
-let get_kword s = let open Types in match s with
-  | "Set" | "set" -> Kset
+let get_kword s = let open Token_types in match s with
   | "external" | "External" -> Kextern
-  | "Change" | "change" -> Kchange
   | "to" -> Kto
   | "If" | "if" -> Kif
   | "Loop" | "loop" -> Kloop
@@ -65,9 +65,9 @@ let get_kword s = let open Types in match s with
   | "export" | "Export" -> Kexport
   | s -> Iden s
 
-type lexer = {str: string; state: lexerstate; pos: int; toks: Types.token list}
+type lexer = {str: string; state: lexerstate; pos: int; toks: Token_types.token list; locs: int list}
 
-let single_tok_tok c = let open Types in match c with
+let single_tok_tok c = let open Token_types in match c with
   | '.' -> Some EndOfLine
   | ',' -> Some Comma
   | '(' -> Some Lparen
@@ -86,19 +86,20 @@ let state_of_char c = match c with
   | '>' -> Some SawGreaterThan
   | '<' -> Some SawLessThan
   | '{' -> Some InComment
+  | ':' -> Some SawColon
   | '"' -> Some (InStrLit "")
   | '\'' -> Some (InStrLit "")
   | _ -> None
 
 
 let rec _lex lexer =
-  let finish_token lexer tok = _lex { lexer with state=Start; pos=lexer.pos + 1; toks=lexer.toks@[tok] } in
+  let finish_token lexer tok = _lex { lexer with state=Start; pos=lexer.pos + 1; toks=lexer.toks@[tok]; locs=lexer.locs@[lexer.pos] } in
   let change_state  lexer state = _lex { lexer with state=state; pos=lexer.pos + 1 } in
-  let finish_and_put_back lexer tok = _lex { lexer with state=Start; pos=lexer.pos; toks=lexer.toks@[tok] } in
+  let finish_and_put_back lexer tok = _lex { lexer with state=Start; pos=lexer.pos; toks=lexer.toks@[tok]; locs=lexer.locs@[lexer.pos] } in
   let incr lexer = _lex { lexer with pos=lexer.pos + 1 } in
   let eat_char lexer c t =
     if lexer.pos >= String.length lexer.str then
-      Error (Types.ExpectedCharFoundEof { expected=c; pos=lexer.pos;})
+      Error (Token_types.ExpectedCharFoundEof { expected=c; pos=lexer.pos;})
     else
       let ch = (String.get lexer.str lexer.pos) in
       if Char.(c = ch) then
@@ -115,13 +116,13 @@ let rec _lex lexer =
     | InCharLit -> Error (ExpectedAlphaNumFoundEof {pos=lexer.pos})
     | InCharLitAteChar _ -> Error (ExpectedCharFoundEof {expected='\''; pos=lexer.pos})
     | InStrLit _ | InStrLitForwardSlash _ -> Error (ExpectedCharFoundEof {expected='"'; pos=lexer.pos})
-    | _ -> Ok (lexer.toks@[Eof])
+    | _ -> Ok ({Token_types.tokens=lexer.toks@[Eof]; locations=lexer.locs@[-1]})
   else
     let c = String.get lexer.str lexer.pos in
     match lexer.state with
     | Start ->
       (match c with
-       | 'a'..'z' | 'A' .. 'Z' | '_' -> change_state lexer (InWord "")
+       | 'a'..'z' | 'A' .. 'Z' | '_' -> change_state lexer (InWord (Char.to_string c))
        | '0'..'9' -> change_state lexer (InNum (Char.to_string c))
        | '\'' -> change_state lexer InCharLit
        | '\n' | ' ' -> incr lexer
@@ -135,7 +136,7 @@ let rec _lex lexer =
         | _ -> incr lexer)
     | InWord s -> (match c with
         | 'a'..'z'|'A'..'Z'|'0'..'9'|'_' -> change_state lexer (InWord (s ^ String.make 1 c))
-        | _ -> finish_and_put_back lexer (get_kword (s ^ Char.to_string c)))
+        | _ -> finish_and_put_back lexer (get_kword s))
     | InNum s -> (match c with
         | '0'..'9'|'_' -> change_state lexer (InNum (s ^ Char.to_string c))
         | _ -> finish_and_put_back lexer (IntLit s))
@@ -161,8 +162,12 @@ let rec _lex lexer =
     | SawBang -> (match c with
         | '=' -> finish_token lexer BoNe
         | _ -> finish_and_put_back lexer ExclaimMark)
+    | SawColon -> (match c with
+        | '=' -> finish_token lexer BoSet
+        | _ -> finish_and_put_back lexer Colon)
     | SawLessThan -> (match c with
         | '=' -> finish_token lexer BoLe
+        | '-' -> finish_token lexer BoAss
         | _ -> finish_and_put_back lexer BoL)
 
-let lex str = _lex { str; state=Start; pos=0; toks=[]; }
+let lex str = _lex { str; state=Start; pos=0; toks=[]; locs=[]}
