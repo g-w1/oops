@@ -1,4 +1,1 @@
-* + - [] 'a' = != "this is a bruh moment" {here is a comment} "
-multiline
-strin
-with \t tabs \t here"
+* + - [1 2 3] 'a' = != "this is a bruh moment" {here is a comment} " multiline strin with \t tabs \t here" 123 6969 123 "a"
