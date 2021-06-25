@@ -1,7 +1,6 @@
 open Core
 open Base
 
-let read_file fname = In_channel.read_all fname
 
 exception Lex_error of (char * int)
 
@@ -76,9 +75,45 @@ type token =
   (* @*)
   | AtSign
 
+let string_of_token t = match t with
+  | Kset -> "set"
+  | Kchange -> "change"
+  | Kexport -> "export"
+  | Kto -> "to"
+  | Kif -> "if"
+  | Kloop -> "loop"
+  | Kbreak -> "break"
+  | Kfunc -> "func"
+  | Kreturn -> "return"
+  | Kextern -> "extern"
+  | Iden s -> s
+  | IntLit s -> s
+  | EndOfLine -> "."
+  | Eof -> "EOF"
+  | Lparen -> "("
+  | Rparen -> ")"
+  | Comma -> ","
+  | ExclaimMark -> "!"
+  | BoPlus -> "+"
+  | BoMinus -> "-"
+  | BoMul -> "*"
+  | BoG -> ">"
+  | BoL -> "<"
+  | BoGe -> ">="
+  | BoLe -> "<="
+  | BoE -> "="
+  | BoNe -> "!="
+  | BoAnd -> "and"
+  | BoOr -> "or"
+  | OpenBrak -> "["
+  | CloseBrak -> "]"
+  | AtSign -> "@"
+
+(* TODO make inword/innum capture their own
+ * intermediate_str instead of storing in lexer *)
 type lexerstate = Start
-                | Inword
-                | InNum
+                | InWord of string
+                | InNum of string
                 | SawLessThan
                 | SawEquals
                 | SawGreaterThan
@@ -104,9 +139,7 @@ let get_kword s = match s with
   | "export" | "Export" -> Some Kexport
   | _ -> None
 
-type lexer = { state: lexerstate; intermediate_str: string; pos: int}
-
-let defaultlexer = { state=Start; intermediate_str=""; pos=0 }
+type lexer = {str: string; state: lexerstate; pos: int; toks: token list}
 
 let single_tok_tok c = match c with
   | '.' -> Some EndOfLine
@@ -133,27 +166,34 @@ let state_of_char c = match c with
 
 type lexer_error = UnexpectedChar of (char * int)
 
-
-
-let rec lex s lexer toks =
-  if lexer.pos >= String.length s
-  then
-    Ok toks
+let rec lex lexer =
+  if lexer.pos >= String.length lexer.str then
+    Ok lexer.toks
   else
-    let c = String.get s lexer.pos in
-    let finish_token s lexer toks tok = lex s { state=Start; intermediate_str=""; pos=lexer.pos + 1 } (toks@[tok]) in
-    let change_state s lexer toks state = lex s { state=state; intermediate_str=lexer.intermediate_str; pos=lexer.pos + 1 } toks in
+    let c = String.get lexer.str lexer.pos in
+    let finish_token lexer tok = lex { lexer with state=Start; pos=lexer.pos + 1; toks=lexer.toks@[tok] } in
+    let change_state  lexer state = lex { lexer with state=state; pos=lexer.pos + 1 } in
+    let incr lexer = lex { lexer with pos=lexer.pos + 1 } in
     match lexer.state with
     | Start ->
       (match c with
-       | 'a'..'z' | 'A' .. 'Z' | '_' -> lex s { state=Inword; intermediate_str=Char.to_string c; pos=lexer.pos + 1} toks
-       | '0'..'9' -> lex s { state=InNum; intermediate_str=Char.to_string c; pos=lexer.pos + 1} toks
-       | '\n' | ' ' -> lex s { state=lexer.state; intermediate_str=""; pos=lexer.pos + 1 } toks
+       | 'a'..'z' | 'A' .. 'Z' | '_' -> change_state lexer (InWord "")
+       | '0'..'9' -> change_state lexer (InNum "")
+       | '\n' | ' ' -> incr lexer
        | c -> (match single_tok_tok c with
-           | Some t -> finish_token s lexer toks t
+           | Some t -> finish_token lexer t
            | None -> (match state_of_char c with
-               | Some state -> change_state s lexer toks state
-               | None -> Error (UnexpectedChar (c, lexer.pos)))
-         )
-      )
+               | Some state -> change_state lexer state
+               | None -> Error (UnexpectedChar (c, lexer.pos)))))
+    | InComment -> (match c with
+        | '}' -> change_state lexer Start
+        | _ -> incr lexer)
     | _ -> Error (UnexpectedChar (c, lexer.pos))
+
+let test_ez_file = In_channel.read_all "test.ez"
+
+let mylexer = {str=test_ez_file; state=Start; pos=0; toks=[]}
+
+let () = match lex mylexer with
+  | Error UnexpectedChar (c, i) -> Out_channel.printf "unexpected char '%c' at %d\n" c i
+  | Ok l -> let _ = (List.map ~f:(fun f -> Out_channel.print_string (string_of_token f)) l) in Out_channel.print_endline ""
