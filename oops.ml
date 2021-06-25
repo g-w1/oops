@@ -92,8 +92,8 @@ let string_of_token t = match t with
   | Kextern -> "extern"
   | Iden s -> s
   | IntLit s -> s
-  | StrLit s -> "\"\"" ^ s ^ "\"\""
-  | CharLit c -> "\'" ^ String.make 1 c ^ "\'"
+  | StrLit s -> "\"" ^ s ^ "\""
+  | CharLit c -> "\'" ^ Char.to_string c ^ "\'"
   | EndOfLine -> "."
   | Eof -> "EOF"
   | Lparen -> "("
@@ -121,15 +121,14 @@ type lexerstate = Start
                 | InWord of string
                 | InNum of string
                 | SawLessThan
-                | SawEquals
                 | SawGreaterThan
                 | SawBang
                 | InComment
                 | InCharLit
                 | InCharLitAteChar of char
                 | InCharLitForwardSlash
-                | InStrLit
-                | InStrLitForwardSlash
+                | InStrLit of string
+                | InStrLitForwardSlash of string
 
 let get_kword s = match s with
   | "Set" | "set" -> Kset
@@ -159,20 +158,20 @@ let single_tok_tok c = match c with
   | '[' -> Some OpenBrak
   | '@' -> Some AtSign
   | ']' -> Some CloseBrak
+  | '=' -> Some BoE
   | _ -> None
 
 let state_of_char c = match c with
   | '!' -> Some SawBang
   | '>' -> Some SawGreaterThan
   | '<' -> Some SawLessThan
-  | '=' -> Some SawEquals
   | '{' -> Some InComment
-  | '"' -> Some InStrLit
-  | '\'' -> Some InStrLit
+  | '"' -> Some (InStrLit "")
+  | '\'' -> Some (InStrLit "")
   | _ -> None
 
-type lexer_error = UnexpectedChar of (char * int)
-                 | ExpectedChar of (char * int)
+type lexer_error = UnexpectedChar of {found: char; pos: int}
+                 | ExpectedChar of { found: char; expected: char; pos: int }
 
 let rec lex lexer =
   if lexer.pos >= String.length lexer.str then
@@ -186,10 +185,10 @@ let rec lex lexer =
     (* TODO handle out of bounds here *)
     let eat_char lexer c t =
       let ch = (String.get lexer.str lexer.pos) in
-      if c = Char.to_int ch then
-        finish_and_put_back lexer t
+      if Char.(c = ch) then
+        finish_token lexer t
       else
-        Error (ExpectedChar (Char.of_int_exn c, lexer.pos)) in
+        Error (ExpectedChar {expected=c; found=ch; pos=lexer.pos}) in
     match lexer.state with
     | Start ->
       (match c with
@@ -201,7 +200,7 @@ let rec lex lexer =
            | Some t -> finish_token lexer t
            | None -> (match state_of_char c with
                | Some state -> change_state lexer state
-               | None -> Error (UnexpectedChar (c, lexer.pos)))))
+               | None -> Error (UnexpectedChar {found=c; pos=lexer.pos}))))
     | InComment -> (match c with
         | '}' -> change_state lexer Start
         | _ -> incr lexer)
@@ -214,14 +213,34 @@ let rec lex lexer =
     | InCharLit -> (match c with
         | '\\' -> change_state lexer InCharLitForwardSlash
         | c -> change_state lexer (InCharLitAteChar c))
-    | InCharLitAteChar c -> eat_char lexer (Char.to_int '\'') (CharLit c)
-    | _ -> Error (UnexpectedChar (c, lexer.pos))
+    | InCharLitForwardSlash -> (match c with
+        | 'n' -> change_state lexer (InCharLitAteChar '\n')
+        | 't' -> change_state lexer (InCharLitAteChar 't')
+        | _ -> Error (UnexpectedChar {found=c; pos=lexer.pos}))
+    | InCharLitAteChar c -> eat_char lexer '\'' (CharLit c)
+    | InStrLit s-> (match c with
+        | '\\' -> change_state lexer (InStrLitForwardSlash s)
+        | '"' -> finish_token lexer (StrLit s)
+        | c -> change_state lexer (InStrLit (s ^ Char.to_string c)))
+    | InStrLitForwardSlash s -> (match c with
+        | 'n' -> change_state lexer (InStrLit (s ^ Char.to_string '\n'))
+        | 't' -> change_state lexer (InStrLit (s ^ Char.to_string '\t'))
+        | c -> Error (UnexpectedChar {found=c; pos=lexer.pos}))
+    | SawGreaterThan -> (match c with
+        | '=' -> finish_token lexer BoGe
+        | _ -> finish_and_put_back lexer BoG)
+    | SawBang -> (match c with
+        | '=' -> finish_token lexer BoNe
+        | _ -> finish_and_put_back lexer ExclaimMark)
+    | SawLessThan -> (match c with
+        | '=' -> finish_token lexer BoLe
+        | _ -> finish_and_put_back lexer BoL)
 
 let test_ez_file = In_channel.read_all "test.ez"
 
 let mylexer = {str=test_ez_file; state=Start; pos=0; toks=[]}
 
 let () = match lex mylexer with
-  | Error UnexpectedChar (c, i) -> Out_channel.printf "unexpected char '%c' at %d\n" c i
-  | Error ExpectedChar (c, i) -> Out_channel.printf "expected char '%c' at %d\n" c i
+  | Error UnexpectedChar {found; pos} -> Out_channel.printf "unexpected char '%c' at %d\n" found pos
+  | Error ExpectedChar {found; expected;  pos} -> Out_channel.printf "expected char '%c' at %d, found %c\n" expected pos found
   | Ok l -> let _ = (List.map ~f:(fun f -> Out_channel.print_string (string_of_token f); Out_channel.print_string " ") l) in Out_channel.print_endline ""
