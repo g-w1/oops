@@ -1,3 +1,4 @@
 (executable
  (name oops)
+ (preprocess (pps ppx_let ppx_deriving.show))
  (libraries base core stdio))

@@ -39,6 +39,10 @@ type token =
   (* Special people*)
   | AtSign (** @*)
   | Colon (** :*)
+[@@deriving show]
+
+(** WAT *)
+let token_eq t ot = t == ot
 
 type lexer_error =
   | UnexpectedChar of {found: char; pos: int}
@@ -50,3 +54,9 @@ type tokens_and_locs =
   { tokens: token list;
     locations: int list;
   }
+
+module TokenIndex : Util.Index = struct
+  type t = int [@@deriving show]
+  let of_int n = n
+  let to_int n = n
+end

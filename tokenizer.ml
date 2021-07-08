@@ -1,43 +1,6 @@
 open Base
 
 
-let string_of_token t = let open Token_types in match t with
-  | Kexport -> "export"
-  | Kto -> "to"
-  | Kif -> "if"
-  | Kloop -> "loop"
-  | Kbreak -> "break"
-  | Kfunc -> "function"
-  | Kreturn -> "return"
-  | Kextern -> "extern"
-  | Iden s -> s
-  | IntLit s -> s
-  | StrLit s -> "\"" ^ s ^ "\""
-  | CharLit c -> "\'" ^ Char.to_string c ^ "\'"
-  | BoAss -> "<-"
-  | BoSet -> ":="
-  | EndOfLine -> "."
-  | Eof -> "EOF"
-  | Lparen -> "("
-  | Rparen -> ")"
-  | Comma -> ","
-  | ExclaimMark -> "!"
-  | BoPlus -> "+"
-  | BoMinus -> "-"
-  | BoMul -> "*"
-  | BoG -> ">"
-  | BoL -> "<"
-  | BoGe -> ">="
-  | BoLe -> "<="
-  | BoE -> "="
-  | BoNe -> "!="
-  | BoAnd -> "and"
-  | BoOr -> "or"
-  | OpenBrak -> "["
-  | CloseBrak -> "]"
-  | AtSign -> "@"
-  | Colon -> ":"
-
 type lexerstate = Start
                 | InWord of string
                 | InNum of string

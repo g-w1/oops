@@ -1,4 +1,1 @@
-function f(a: u32, b: usize, c: []const),
-         x := 1.
-         x <- 2.
-!
+function f(a: u32, b: bruh) u32

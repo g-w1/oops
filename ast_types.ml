@@ -1,41 +1,41 @@
-type binop =
-  | Add
-  | Sub
-  | Mul
-  | Gt
-  | Lt
-  | Equ
-  | Lte
-  | Gte
-  | Ne
-  | And
+module NodeIndex : Util.Index = struct
+  type t = int [@@deriving show]
+  let of_int x = x
+  let to_int x = x
+end
 
-type expr =
-  | Number of int
-  | Ident of string
-  | BinOp of { lhs: expr; op: binop; rhs: expr }
-  | FuncCall of { func_name: string; args: expr list }
-  | Deref of expr
-  | Ref of expr
-  | ArrayAccess of { arr: expr; acc: expr }
+type bin = (NodeIndex.t * NodeIndex.t) [@@deriving show]
+type fnparams = (NodeIndex.t * NodeIndex.t) list [@@deriving show]
+type fnproto = { name: NodeIndex.t; params: fnparams; ret: NodeIndex.t}[@@deriving show]
+type node_tag =
+  | Set of bin
+  | Change of bin
+  | Add of bin
+  | Sub of bin
+  | Mul of bin
+  | Gt of bin
+  | Lt of bin
+  | Equ of bin
+  | Lte of bin
+  | Gte of bin
+  | Ne of bin
+  | And of bin
+  | ArrayAccess of bin
 
+  | Number of Token_types.TokenIndex.t
+  | Ident of Token_types.TokenIndex.t
+  | String of Token_types.TokenIndex.t
 
-type stmt =
-  | SetOrChange of { set: bool; lhs: expr; rhs: expr } (** sema validates if lhs can be assigned to or not*)
-  | If of { guard: expr; body: body }
-  | Loop of body
-  | Return of expr
-  | Break
-and
-  body = stmt list
+  | Deref of NodeIndex.t
+  | Ref of NodeIndex.t
 
-type ty =
-  | U32
-  | U64
-  | Array of ty
+  | Body of NodeIndex.t list
 
-type tlnode =
-  | Func of func
-  | Extern of { name: string; params: fnparam list}
-and func = { name: string; body: body; export: bool; params: fnparam list }
-and fnparam = { n: string; t: ty }
+  | Function of fnproto * NodeIndex.t (** latter is body *)
+[@@deriving show]
+
+type ast_error =
+  | InvalidInTl of Token_types.token
+  | ExpectedFound of Token_types.token * Token_types.token
+  | InvalidTODOSPECIFIC
+[@@deriving show]
