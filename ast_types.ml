@@ -7,6 +7,7 @@ end
 type bin = (NodeIndex.t * NodeIndex.t) [@@deriving show]
 type fnparams = (NodeIndex.t * NodeIndex.t) list [@@deriving show]
 type fnproto = { name: NodeIndex.t; params: fnparams; ret: NodeIndex.t}[@@deriving show]
+type body = NodeIndex.t list [@@deriving show]
 type node_tag =
   | Set of bin
   | Change of bin
@@ -29,9 +30,9 @@ type node_tag =
   | Deref of NodeIndex.t
   | Ref of NodeIndex.t
 
-  | Body of NodeIndex.t list
+  | Body of body
 
-  | Function of fnproto * NodeIndex.t (** latter is body *)
+  | Function of fnproto * body
 [@@deriving show]
 
 type ast_error =
