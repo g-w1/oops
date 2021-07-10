@@ -12,7 +12,7 @@ let print_token_error = function
 
 let () = match (Tokenizer.lex (In_channel.read_all "test.ez") >>| fun l -> print_tokens l; Parser.parse l.tokens) with
   | Ok eo -> (match eo with
-      | Ok o -> ignore (List.map ~f:(fun t -> Out_channel.print_string (Ast_types.show_node_tag t)) (snd o));
+      | Ok o -> ignore (Array.map ~f:(fun t -> Out_channel.print_string (Ast_types.show_node_tag t)) (snd o));
         Out_channel.print_endline ""
       | Error e -> Out_channel.print_endline (Ast_types.show_ast_error e))
   | Error e -> print_token_error e

@@ -108,7 +108,7 @@ let rec _lex lexer =
         | c -> change_state lexer (InCharLitAteChar c))
     | InCharLitForwardSlash -> (match c with
         | 'n' -> change_state lexer (InCharLitAteChar '\n')
-        | 't' -> change_state lexer (InCharLitAteChar 't')
+        | 't' -> change_state lexer (InCharLitAteChar '\t')
         | _ -> Error (UnexpectedChar {found=c; pos=lexer.pos}))
     | InCharLitAteChar c -> eat_char lexer '\'' (CharLit c)
     | InStrLit s-> (match c with
