@@ -28,7 +28,7 @@ let get_kword s = let open Token_types in match s with
   | "export" | "Export" -> Kexport
   | s -> Iden s
 
-type lexer = {str: string; state: lexerstate; pos: int; toks: Token_types.token list; locs: int list}
+type lexer = {str: string; state: lexerstate; pos: int; toks: Token_types.token array; locs: int array}
 
 let single_tok_tok c = let open Token_types in match c with
   | '.' -> Some EndOfLine
@@ -56,9 +56,9 @@ let state_of_char c = match c with
 
 
 let rec _lex lexer =
-  let finish_token lexer tok = _lex { lexer with state=Start; pos=lexer.pos + 1; toks=lexer.toks@[tok]; locs=lexer.locs@[lexer.pos] } in
+  let finish_token lexer tok = _lex { lexer with state=Start; pos=lexer.pos + 1; toks=Array.append lexer.toks [|tok|]; locs=Array.append lexer.locs [|lexer.pos|] } in
   let change_state  lexer state = _lex { lexer with state=state; pos=lexer.pos + 1 } in
-  let finish_and_put_back lexer tok = _lex { lexer with state=Start; pos=lexer.pos; toks=lexer.toks@[tok]; locs=lexer.locs@[lexer.pos] } in
+  let finish_and_put_back lexer tok = _lex { lexer with state=Start; pos=lexer.pos; toks=Array.append lexer.toks [|tok|]; locs=Array.append lexer.locs [|lexer.pos|] } in
   let incr lexer = _lex { lexer with pos=lexer.pos + 1 } in
   let eat_char lexer c t =
     if lexer.pos >= String.length lexer.str then
@@ -79,7 +79,7 @@ let rec _lex lexer =
     | InCharLit -> Error (ExpectedAlphaNumFoundEof {pos=lexer.pos})
     | InCharLitAteChar _ -> Error (ExpectedCharFoundEof {expected='\''; pos=lexer.pos})
     | InStrLit _ | InStrLitForwardSlash _ -> Error (ExpectedCharFoundEof {expected='"'; pos=lexer.pos})
-    | _ -> Ok ({Token_types.tokens=lexer.toks@[Eof]; locations=lexer.locs@[-1]})
+    | _ -> Ok ({Token_types.tokens=Array.append lexer.toks [|Eof|]; locations=Array.append lexer.locs [|-1|]})
   else
     let c = String.get lexer.str lexer.pos in
     match lexer.state with
@@ -89,6 +89,7 @@ let rec _lex lexer =
        | '0'..'9' -> change_state lexer (InNum (Char.to_string c))
        | '\'' -> change_state lexer InCharLit
        | '\n' | ' ' -> incr lexer
+       | '/' -> finish_token lexer BoDiv
        | c -> (match single_tok_tok c with
            | Some t -> finish_token lexer t
            | None -> (match state_of_char c with
@@ -133,4 +134,4 @@ let rec _lex lexer =
         | '-' -> finish_token lexer BoAss
         | _ -> finish_and_put_back lexer BoL)
 
-let lex str = _lex { str; state=Start; pos=0; toks=[]; locs=[]}
+let lex str = _lex { str; state=Start; pos=0; toks=[||]; locs=[||]}

@@ -8,6 +8,21 @@ type bin = (NodeIndex.t * NodeIndex.t) [@@deriving show]
 type fnparams = (NodeIndex.t * NodeIndex.t) list [@@deriving show]
 type fnproto = { name: NodeIndex.t; params: fnparams; ret: NodeIndex.t}[@@deriving show]
 type block = NodeIndex.t list [@@deriving show]
+type unop = Deref | Ref [@@deriving show]
+type binop =
+  | Add
+  | Sub
+  | Mul
+  | Div
+  | Gt
+  | Lt
+  | Equ
+  | Lte
+  | Gte
+  | Ne
+  | And
+  | Or
+[@@deriving show]
 type node_tag =
   (* tl stuff *)
   | Function of fnproto * block
@@ -17,24 +32,16 @@ type node_tag =
   | Change of (NodeIndex.t * NodeIndex.t)
 
   (* expressions *)
-  | Add of bin
-  | Sub of bin
-  | Mul of bin
-  | Gt of bin
-  | Lt of bin
-  | Equ of bin
-  | Lte of bin
-  | Gte of bin
-  | Ne of bin
-  | And of bin
+  | BinOp of binop * bin
   | ArrayAccess of bin
+
+  | Unop of unop * NodeIndex.t
 
   | Number of Token_types.TokenIndex.t
   | Iden of Token_types.TokenIndex.t
   | String of Token_types.TokenIndex.t
 
-  | Deref of NodeIndex.t
-  | Ref of NodeIndex.t
+
 [@@deriving show]
 
 type ast_error =
@@ -44,4 +51,13 @@ type ast_error =
   | ExpectedFoundStr of string * Token_types.TokenIndex.t
   | SetWithNonIdentIsInvalid of NodeIndex.t
   | InvalidTODOSPECIFIC
-[@@deriving show]
+
+let show_ast_error e tokens =
+  let get t = Token_types.show_token(tokens.(Token_types.TokenIndex.to_int t)) in
+  match e with
+  | InvalidInTl t -> String.concat "invalid token in top level" [get t]
+  | InvalidStartOfExpr t -> "invalid starrt of expr" ^ Token_types.show_token(tokens.(Token_types.TokenIndex.to_int t))
+  | ExpectedFound (ex, f) -> Printf.sprintf "expected %s, found %s" (Token_types.show_token(ex)) (get f)
+  | ExpectedFoundStr (ex, f) -> Printf.sprintf "expected %s, found %s" ex (get f)
+  | SetWithNonIdentIsInvalid _ -> "TODO print ast nodes"
+  | InvalidTODOSPECIFIC -> "TODO"

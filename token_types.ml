@@ -27,6 +27,7 @@ type token =
   | BoPlus (** '+'*)
   | BoMinus (** '-'*)
   | BoMul (** '*'*)
+  | BoDiv (** '/'*)
   | BoG (** '>'*)
   | BoL (** '<'*)
   | BoGe (** '>='*)
@@ -52,8 +53,8 @@ type lexer_error =
   | ExpectedAlphaNumFoundEof of {pos: int;}
 
 type tokens_and_locs =
-  { tokens: token list;
-    locations: int list;
+  { tokens: token array;
+    locations: int array;
   }
 
 module TokenIndex : Util.Index = struct

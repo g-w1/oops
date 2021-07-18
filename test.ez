@@ -1,4 +1,3 @@
-function f(a: u32, b: bruh) u32,
-    bruh := 1.
-    bruh <- 2.
+function f(a:b) u32,
+    bruh := 2 + 1 + 3.
 !
