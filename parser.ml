@@ -11,8 +11,8 @@ type parser = {
   tl_nodes: Ast_types.NodeIndex.t list; (** toplevel nodes *)
   ast: Ast_types.node_tag array (** all the nodes! *)
 }
-let print_node p node =
-  Out_channel.print_endline (Ast_types.show_node_tag p.ast.(NodeIndex.to_int node - 1))
+let print_node node =
+  Out_channel.print_endline (Ast_types.show_node_tag node)
 
 let print_tok tok =
   Out_channel.print_endline (Token_types.show_token tok)
@@ -27,7 +27,10 @@ let expect_eat_token p t =
   else
     Error (Ast_types.ExpectedFound (t, (tokindex p)))
 
-let add_node p node = { p with ast=Array.append p.ast [|node|] }, NodeIndex.of_int ((Array.length p.ast) + 1)
+let add_node p node = ((Out_channel.printf "adding node: ");
+                       (print_node node);
+                       ({ p with ast=Array.append p.ast [|node|] }, NodeIndex.of_int ((Array.length p.ast) + 1)))
+
 let add_tl_node p nodeindex = { p with tl_nodes=p.tl_nodes@[nodeindex] }
 (* indiv parsing funcs *)
 let p_iden p = match curtok p with
@@ -71,8 +74,8 @@ let bin_op_pres p =
 
 let p_primary_expr p =
   match curtok p with
-  | IntLit _ ->  let (p, node) = add_node p (Ast_types.Number (tokindex p)) in Ok (p, node)
-  | Iden _ ->  let (p, node) = add_node p (Ast_types.Iden (tokindex p)) in Ok (p, node)
+  | IntLit _ ->  let (p, node) = add_node (inc p) (Ast_types.Number (tokindex p)) in Ok (p, node)
+  | Iden _ ->  let (p, node) = add_node (inc p) (Ast_types.Iden (tokindex p)) in Ok (p, node)
   | _ -> Error (Ast_types.InvalidStartOfExpr (tokindex p))
 
 let abop_of_tbop = let open Token_types in let open Ast_types in function
@@ -90,13 +93,10 @@ let abop_of_tbop = let open Token_types in let open Ast_types in function
     | BoOr -> Or
     | _ -> assert false (* unreachable *)
 
-
 let rec p_bin_op_rhs p passed_pres old_lhs =
   let rec loop p pres lhs =
     if pres < passed_pres then
-      ((Out_channel.printf "%d\n" pres);
-       (print_node p lhs);
-       Ok (p, lhs))
+      Ok (p, lhs)
     else
       (* must be a binop, because other things have -1 pres *)
       let bin_op = curtok p in
@@ -111,7 +111,6 @@ let rec p_bin_op_rhs p passed_pres old_lhs =
         let (p, lhs) = add_node p (Ast_types.BinOp (abop_of_tbop bin_op, (lhs, rhs))) in
         loop p next_pres lhs
   in
-  let p = inc p in
   loop p (bin_op_pres p) old_lhs
 
 
@@ -121,14 +120,18 @@ let p_expr p =
 
 let p_block_stmt p =
   let%bind (p, e1) = p_expr p in
-  Out_channel.print_endline "here";
+  let position = p.pos + 1 in
   match curtok p with
-  | BoAss -> let%bind (p, e2) = p_expr (inc p) in Ok (add_node p (Ast_types.Change (e1, e2)))
+  | BoAss -> let%bind (p, e2) = p_expr (inc p) in
+    let%bind p = expect_eat_token p EndOfLine in
+    Ok (add_node p (Ast_types.Change (e1, e2)))
   | BoSet -> let%bind (p, e2) = p_expr (inc p) in
     let n = p.ast.((NodeIndex.to_int e1) - 1) in
     (match n with
-     | Iden tindex -> Ok (add_node p (Ast_types.Set (tindex, e2)))
-     | _ -> Error (Ast_types.SetWithNonIdentIsInvalid e2))
+     | Iden tindex -> let (p, node) = add_node p (Ast_types.Set (tindex, e2)) in
+       let%bind p = expect_eat_token p EndOfLine in
+       Ok (p, node)
+     | _ -> Error (Ast_types.SetWithNonIdentIsInvalid (Token_types.TokenIndex.of_int position)))
   | _ -> let%bind p = expect_eat_token p EndOfLine in
     Ok (p, e1)
 

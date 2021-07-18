@@ -12,7 +12,7 @@ let print_ast_error e tokens =
   let get t = Token_types.show_token(tokens.(Token_types.TokenIndex.to_int t)) in
   match e with
   | Ast_types.InvalidInTl t -> "invalid token in top level" ^ (get t)
-  | Ast_types.InvalidStartOfExpr t -> "invalid starrt of expr" ^ Token_types.show_token(tokens.(Token_types.TokenIndex.to_int t))
+  | Ast_types.InvalidStartOfExpr t -> "invalid start of expr " ^ Token_types.show_token(tokens.(Token_types.TokenIndex.to_int t))
   | Ast_types.ExpectedFound (ex, f) -> Printf.sprintf "expected %s, found %s" (Token_types.show_token(ex)) (get f)
   | Ast_types.ExpectedFoundStr (ex, f) -> Printf.sprintf "expected %s, found %s" ex (get f)
   | Ast_types.SetWithNonIdentIsInvalid _ -> "TODO print ast nodes: set with non ident is invalid"

@@ -49,15 +49,6 @@ type ast_error =
   | InvalidStartOfExpr of Token_types.TokenIndex.t
   | ExpectedFound of Token_types.token * Token_types.TokenIndex.t
   | ExpectedFoundStr of string * Token_types.TokenIndex.t
-  | SetWithNonIdentIsInvalid of NodeIndex.t
+  | SetWithNonIdentIsInvalid of Token_types.TokenIndex.t
   | InvalidTODOSPECIFIC
 
-let show_ast_error e tokens =
-  let get t = Token_types.show_token(tokens.(Token_types.TokenIndex.to_int t)) in
-  match e with
-  | InvalidInTl t -> String.concat "invalid token in top level" [get t]
-  | InvalidStartOfExpr t -> "invalid starrt of expr" ^ Token_types.show_token(tokens.(Token_types.TokenIndex.to_int t))
-  | ExpectedFound (ex, f) -> Printf.sprintf "expected %s, found %s" (Token_types.show_token(ex)) (get f)
-  | ExpectedFoundStr (ex, f) -> Printf.sprintf "expected %s, found %s" ex (get f)
-  | SetWithNonIdentIsInvalid _ -> "TODO print ast nodes"
-  | InvalidTODOSPECIFIC -> "TODO"
